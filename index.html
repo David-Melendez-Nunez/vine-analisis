@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vine Analytics & Tax Pro 2025</title>
+    <title>Vine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -19,14 +19,26 @@
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
         
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+        
+        .modal-animate { animation: slideIn 0.2s ease-out forwards; }
+
+        .blur-sensitive { filter: blur(5px); transition: filter 0.3s; user-select: none; }
+        .blur-sensitive:hover { filter: blur(2px); }
+
+        /* Scrollbar fina */
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f5f9; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
         @media print {
             .no-print { display: none !important; }
             body { background: white; color: black; }
-            .print-break { page-break-before: always; }
-            /* Forzar visualización de resultados en impresión */
             #resFinalCard { border: 1px solid #000 !important; color: #000 !important; }
             .bg-slate-900 { background-color: #fff !important; color: #000 !important; border: 1px solid #000; }
             .text-white { color: #000 !important; }
+            .blur-sensitive { filter: none !important; }
         }
     </style>
 </head>
@@ -35,12 +47,17 @@
     <!-- Navbar -->
     <nav class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50 no-print">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
-                <i class="fa-brands fa-amazon text-yellow-500"></i> Vine Analytics <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded ml-2 shadow-inner">v3.2</span>
-            </h1>
-            <button onclick="window.print()" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded transition flex items-center gap-2">
-                <i class="fa-solid fa-print"></i> <span class="hidden md:inline">Imprimir PDF</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
+                    <i class="fa-brands fa-amazon text-yellow-500"></i> Vine Analytics 
+                    <span class="text-xs bg-teal-600 px-2 py-0.5 rounded ml-2 shadow-inner hidden sm:inline">v4.2 Fixed</span>
+                </h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="togglePrivacy()" id="btnPrivacy" class="text-slate-300 hover:text-white transition" title="Ocultar cifras"><i class="fa-regular fa-eye"></i></button>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <button onclick="window.print()" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded transition flex items-center gap-2"><i class="fa-solid fa-print"></i> <span class="hidden md:inline">PDF</span></button>
+            </div>
         </div>
     </nav>
 
@@ -48,19 +65,15 @@
     <div class="bg-white border-b border-slate-200 sticky top-[60px] z-40 shadow-sm no-print">
         <div class="container mx-auto px-4">
             <div class="flex space-x-6 overflow-x-auto no-scrollbar">
-                <button onclick="switchMainTab('dashboard')" id="tab-dashboard" class="py-4 text-sm font-medium tab-active transition whitespace-nowrap">
-                    <i class="fa-solid fa-chart-pie mr-2"></i>Dashboard & DAC7
-                </button>
-                <button onclick="switchMainTab('tax')" id="tab-tax" class="py-4 text-sm font-medium tab-inactive transition whitespace-nowrap">
-                    <i class="fa-solid fa-calculator mr-2"></i>Simulador Hacienda
-                </button>
+                <button onclick="switchMainTab('dashboard')" id="tab-dashboard" class="py-4 text-sm font-medium tab-active transition whitespace-nowrap"><i class="fa-solid fa-chart-pie mr-2"></i>Dashboard & DAC7</button>
+                <button onclick="switchMainTab('tax')" id="tab-tax" class="py-4 text-sm font-medium tab-inactive transition whitespace-nowrap"><i class="fa-solid fa-calculator mr-2"></i>Simulador Hacienda</button>
             </div>
         </div>
     </div>
 
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
 
-        <!-- VISTA 1: DASHBOARD -->
+        <!-- DASHBOARD -->
         <div id="view-dashboard" class="animate-slide-in">
             <!-- Monitor DAC7 -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 relative overflow-hidden">
@@ -75,7 +88,7 @@
                     <div>
                         <div class="flex justify-between text-xs mb-1">
                             <span class="font-medium text-slate-600">Importe Acumulado</span>
-                            <span class="text-slate-500"><span id="dacMoneyVal">0</span> / 2.000 €</span>
+                            <span class="text-slate-500"><span id="dacMoneyVal" class="monetary-value">0</span> / 2.000 €</span>
                         </div>
                         <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                             <div id="dacMoneyBar" class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
@@ -83,7 +96,7 @@
                     </div>
                     <div>
                         <div class="flex justify-between text-xs mb-1">
-                            <span class="font-medium text-slate-600">Items Reportables</span>
+                            <span class="font-medium text-slate-600">Items Reportables (Total)</span>
                             <span class="text-slate-500"><span id="dacItemsVal">0</span> / 30 Items</span>
                         </div>
                         <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -94,43 +107,47 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Izquierda: Carga -->
+                <!-- Columna Izquierda -->
                 <div class="lg:col-span-4 space-y-6">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 no-print">
-                        <h2 class="text-base font-semibold mb-4 text-slate-700">Cargar Datos</h2>
+                        <h2 class="text-base font-semibold mb-4 text-slate-700 flex justify-between items-center"><span>Cargar Datos</span><button onclick="resetData()" class="text-xs text-red-400 hover:text-red-600 underline">Reiniciar</button></h2>
                         <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center transition-all cursor-pointer hover:border-blue-400 hover:bg-slate-50 relative group">
                             <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
-                            <div class="pointer-events-none group-hover:scale-105 transition-transform duration-200">
-                                <i class="fa-solid fa-file-excel text-3xl text-green-600 mb-2"></i>
-                                <p class="text-sm font-medium text-slate-700">Arrastra tu Excel aquí</p>
-                            </div>
+                            <div class="pointer-events-none group-hover:scale-105 transition-transform duration-200"><i class="fa-solid fa-file-excel text-3xl text-green-600 mb-2"></i><p class="text-sm font-medium text-slate-700">Arrastra tu Excel aquí</p></div>
                         </div>
-                        <div class="mt-4 flex justify-between text-sm">
-                             <div><p class="text-xs text-slate-400">Total Fiscal</p><p id="dashTotalAmount" class="font-bold text-slate-800">0,00 €</p></div>
-                             <div><p class="text-xs text-slate-400">Items Gratuitos</p><p id="dashTotalZero" class="font-bold text-green-600">0</p></div>
+                        <div class="mt-6 grid grid-cols-3 gap-2 text-center text-sm pt-4 border-t border-slate-100">
+                             <div><p class="text-[10px] uppercase text-slate-400 font-bold mb-1">Total Fiscal</p><p id="dashTotalAmount" class="font-bold text-slate-800 text-xs md:text-sm monetary-value">0,00 €</p></div>
+                             <div class="border-l border-r border-slate-100"><p class="text-[10px] uppercase text-slate-400 font-bold mb-1">Gratis (0€)</p><p id="dashTotalZero" class="font-bold text-green-600 text-xs md:text-sm">0</p></div>
+                             <div><p class="text-[10px] uppercase text-slate-400 font-bold mb-1">Devueltos</p><p id="dashTotalReturned" class="font-bold text-red-500 text-xs md:text-sm">0</p></div>
                         </div>
+                        <div id="errorMsg" class="hidden mt-2 p-2 bg-red-50 text-red-600 text-xs rounded text-center"></div>
                     </div>
-                    <!-- Top Items -->
+
+                    <!-- BUSCADOR (CORREGIDO) -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h2 class="text-base font-semibold mb-4 text-slate-700 flex items-center gap-2"><i class="fa-solid fa-crown text-yellow-500"></i> Top 5 "Whales"</h2>
-                        <div id="topItemsContainer" class="space-y-3"><p class="text-xs text-slate-400 italic text-center py-4">Carga datos...</p></div>
+                        <div class="flex justify-between items-center mb-4"><h2 class="text-base font-semibold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-list text-yellow-500"></i> Listado de Artículos</h2></div>
+                        <div class="relative mb-4"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i><input type="text" id="searchInput" onkeyup="filterItems()" placeholder="Buscar en todos los artículos..." class="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                        <div id="topItemsContainer" class="space-y-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin"><p class="text-xs text-slate-400 italic text-center py-4">Carga datos para ver la lista...</p></div>
+                        <p class="text-[10px] text-slate-400 text-center mt-2 border-t border-slate-50 pt-2" id="itemsFooter">Mostrando resultados</p>
                     </div>
                 </div>
 
-                <!-- Derecha: Gráficos -->
+                <!-- Columna Derecha -->
                 <div class="lg:col-span-8 space-y-6">
                     <div class="bg-slate-100 p-1 rounded-lg inline-flex w-full sm:w-auto no-print">
                         <button onclick="switchChartMode('fiscal')" id="btn-chart-fiscal" class="flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-semibold shadow-sm bg-white text-slate-800 transition">Fiscal (€)</button>
                         <button onclick="switchChartMode('zero')" id="btn-chart-zero" class="flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition">Gratis (0€)</button>
                     </div>
+                    
+                    <!-- Gráfico Principal -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-80 relative">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 absolute top-4 left-6">Distribución por Categoría</h3>
                         <canvas id="expenseChart"></canvas>
                         <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10"><p class="text-sm text-slate-400">Esperando archivo...</p></div>
+                        <p class="text-[10px] text-slate-400 text-center mt-2 absolute bottom-2 w-full no-print"><i class="fa-regular fa-hand-pointer"></i> Haz clic en el gráfico para ver el detalle</p>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-72 relative">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Evolución Mensual (Gasto)</h3>
-                        <canvas id="monthlyChart"></canvas>
-                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-72 relative"><h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Evolución Mensual (Gasto)</h3><canvas id="monthlyChart"></canvas></div>
                     <div id="cardsContainer" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
                 </div>
             </div>
@@ -142,163 +159,151 @@
                 <!-- Formulario -->
                 <div class="lg:col-span-1 space-y-6 no-print">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-blue-500">
-                        <h2 class="text-lg font-bold text-slate-800 mb-1">Calculadora IRPF</h2>
-                        <p class="text-xs text-slate-400 mb-4">Introduce tus datos para estimar el impacto.</p>
+                        <h2 class="text-lg font-bold text-slate-800 mb-1">Perfil del Contribuyente</h2>
+                        <p class="text-xs text-slate-400 mb-4">Configura tu situación.</p>
 
                         <form id="taxForm" oninput="calculateTaxAndSave()" class="space-y-4">
-                            <!-- Salario -->
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Salario Bruto Anual</label>
-                                <div class="relative">
-                                    <input type="number" id="taxSalary" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50" placeholder="Ej: 24000">
-                                    <span class="absolute right-3 top-2 text-slate-400 text-xs">€</span>
-                                </div>
+                            <!-- Switches -->
+                            <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                <div class="flex items-center justify-between"><div class="mr-2"><label class="text-xs font-bold text-indigo-800 block">Solo ingresos Vine</label><p class="text-[10px] text-indigo-600">Estudiante / Desempleado.</p></div><div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="taxOnlyVine" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-indigo-200" onchange="toggleSalaryField()"><label for="taxOnlyVine" class="toggle-label block overflow-hidden h-5 rounded-full bg-indigo-200 cursor-pointer"></label></div></div>
+                            </div>
+                            <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                <div class="flex items-center justify-between"><div class="mr-2"><label class="text-xs font-bold text-orange-800 block">Vivo con mis padres</label><p class="text-[10px] text-orange-600">No emancipado.</p></div><div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="taxWithParents" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-orange-200" onchange="calculateTaxAndSave()"><label for="taxWithParents" class="toggle-label block overflow-hidden h-5 rounded-full bg-orange-200 cursor-pointer"></label></div></div>
                             </div>
 
-                            <!-- RETENCIÓN (NUEVO) -->
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Retención Nómina (%)</label>
-                                <div class="relative">
-                                    <input type="number" id="taxRetention" step="0.1" class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-blue-50 focus:ring-2 focus:ring-blue-400 outline-none" placeholder="Ej: 12.5">
-                                    <span class="absolute right-3 top-2 text-blue-400 text-xs font-bold">%</span>
-                                </div>
-                                <p class="text-[10px] text-slate-400 mt-1">Mira tu nómina o pon una estimación.</p>
-                            </div>
-
-                            <!-- Vine -->
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1 flex justify-between">
-                                    <span>Valor Vine (Etv)</span>
-                                    <span class="text-[10px] bg-green-100 text-green-700 px-1.5 rounded hidden" id="vineAutoBadge">Auto</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="number" id="taxVine" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-yellow-50" placeholder="0.00">
-                                    <span class="absolute right-3 top-2 text-slate-400 text-xs">€</span>
-                                </div>
-                            </div>
+                            <div class="relative"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Provincia</label><select id="taxProvince" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="calculateTaxAndSave()"><optgroup label="Selecciona tu provincia"><option value="general">Generica / Otra</option><option value="madrid">Madrid</option><option value="barcelona">Barcelona (Cat)</option><option value="sevilla">Sevilla (And)</option><option value="valencia">Valencia (Val)</option></optgroup></select></div>
+                            <div id="salaryContainer" class="transition-all duration-300"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Salario Bruto</label><input type="number" id="taxSalary" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50" placeholder="Ej: 24000"></div>
+                            <div id="retentionContainer" class="transition-all duration-300"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Retención %</label><input type="number" id="taxRetention" step="0.1" class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-blue-50 outline-none" placeholder="Ej: 12.5"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1 flex justify-between"><span>Valor Vine (Etv)</span><span class="text-[10px] bg-green-100 text-green-700 px-1.5 rounded hidden" id="vineAutoBadge">Auto</span></label><input type="number" id="taxVine" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-yellow-50" placeholder="0.00"></div>
                             <hr class="border-slate-100">
-                            
-                            <!-- Situación Personal -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Edad</label>
-                                    <input type="number" id="taxAge" value="35" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Hijos</label>
-                                    <select id="taxChildren" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
-                                        <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4+</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Discapacidad</label>
-                                <select id="taxDisability" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
-                                    <option value="0">Ninguna</option><option value="33">33% - 65%</option><option value="65">+65%</option>
-                                </select>
-                            </div>
+                            <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-semibold text-slate-600 mb-1">Edad</label><input type="number" id="taxAge" value="30" class="w-full px-2 py-1.5 border rounded text-sm"></div><div><label class="block text-xs font-semibold text-slate-600 mb-1">Hijos</label><select id="taxChildren" class="w-full px-2 py-1.5 border rounded text-sm"><option value="0">0</option><option value="1">1</option></select></div></div>
+                            <input type="hidden" id="taxDisability" value="0"><input type="hidden" id="taxStatus" value="single">
                         </form>
                     </div>
-
-                    <!-- EXPLICACIÓN MINIMO -->
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <h4 class="text-xs font-bold text-blue-800 uppercase mb-2">Tu Mínimo Exento</h4>
-                        <div class="space-y-1 text-xs text-blue-900">
-                            <div class="flex justify-between"><span>Base Personal:</span> <span class="font-mono font-bold">5.550 €</span></div>
-                            <div class="flex justify-between text-blue-600"><span>+ Por Edad:</span> <span class="font-mono" id="dispMinAge">0 €</span></div>
-                            <div class="flex justify-between text-blue-600"><span>+ Por Hijos:</span> <span class="font-mono" id="dispMinKids">0 €</span></div>
-                            <div class="flex justify-between text-blue-600"><span>+ Discapacidad:</span> <span class="font-mono" id="dispMinDis">0 €</span></div>
-                            <div class="border-t border-blue-200 mt-1 pt-1 flex justify-between font-bold"><span>TOTAL:</span> <span class="font-mono text-base" id="dispMinTotal">5.550 €</span></div>
-                        </div>
-                    </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100"><h4 class="text-xs font-bold text-blue-800 uppercase mb-2">Tu Mínimo Exento</h4><div class="space-y-1 text-xs text-blue-900"><div class="flex justify-between"><span>Base Personal:</span> <span class="font-mono font-bold">5.550 €</span></div><div class="flex justify-between text-blue-600"><span>+ Por Edad:</span> <span class="font-mono" id="dispMinAge">0 €</span></div><div class="border-t border-blue-200 mt-1 pt-1 flex justify-between font-bold"><span>TOTAL:</span> <span class="font-mono text-base" id="dispMinTotal">5.550 €</span></div></div></div>
                 </div>
 
-                <!-- Resultados -->
                 <div class="lg:col-span-2 space-y-6">
-                    
-                    <!-- 1. IMPACTO VINE (Coste Marginal) -->
+                    <div id="parentsAlert" class="hidden bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 rounded shadow-sm relative animate-slide-in"><p class="font-bold text-sm"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ¡Aviso Familiar!</p><p class="text-xs mt-1">Al ganar más de 1.800€ y presentar declaración, tus padres <strong>pierden el derecho</strong> a deducirse el "Mínimo por Descendiente".</p></div>
+                    <div id="studentAlert" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded shadow-sm relative animate-slide-in"><p class="font-bold text-sm"><i class="fa-solid fa-info-circle mr-1"></i> Nota Estudiante</p><p class="text-xs mt-1">Aunque tu cuota salga a 0€, si ganas más de 1.000€ en Vine, debes presentar declaración.</p></div>
+
+                    <!-- 1. IMPACTO VINE -->
                     <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden print:bg-white print:text-black print:border print:border-black">
-                        <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-indigo-500 rounded-full opacity-20 blur-2xl print:hidden"></div>
-                        <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2 print:text-black">Coste "Extra" por Vine</h3>
-                        <div class="flex items-baseline gap-2">
-                            <span id="resDifference" class="text-4xl md:text-5xl font-bold text-white print:text-black">0 €</span>
-                            <span class="text-sm text-slate-400 print:text-black">impuestos generados</span>
-                        </div>
-                        <div class="mt-4 text-xs text-slate-400 print:text-black">
-                            Esto es lo que Vine añade a tu factura teórica. <br>
-                            Sin Vine pagarías: <span id="resTaxNoVineMini" class="font-bold text-white print:text-black">0 €</span>. 
-                            Con Vine pagas: <span id="resTaxWithVineMini" class="font-bold text-white print:text-black">0 €</span>.
-                        </div>
+                        <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2 print:text-black">Coste en Impuestos (Vine)</h3>
+                        <div class="flex items-baseline gap-2"><span id="resDifference" class="text-4xl md:text-5xl font-bold text-white print:text-black monetary-value">0 €</span></div>
+                        <div class="mt-4 text-xs text-slate-400 print:text-black" id="vineImpactText">Sin Vine: <span id="resTaxNoVineMini" class="monetary-value">0 €</span>. Con Vine: <span id="resTaxWithVineMini" class="monetary-value">0 €</span>.</div>
                     </div>
 
-                    <!-- 2. RESULTADO DECLARACIÓN (NUEVO) -->
+                    <!-- 2. RESULTADO FINAL -->
                     <div id="resFinalCard" class="bg-white p-6 rounded-2xl shadow-lg border-2 border-slate-100 relative overflow-hidden transition-colors duration-500">
-                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Resultado Estimado Renta</h3>
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Resultado Declaración</h3>
                         <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                            <div>
-                                <div id="resFinalAmount" class="text-4xl md:text-5xl font-bold text-slate-300">--- €</div>
-                                <div id="resFinalText" class="text-sm font-bold uppercase mt-1 text-slate-400">FALTAN DATOS</div>
-                            </div>
-                            <div class="text-right text-xs text-slate-500 space-y-1">
-                                <div>Impuesto Total: <span id="resTotalTaxCalc" class="font-mono font-bold">0 €</span></div>
-                                <div>- Ya Retenido (Nómina): <span id="resAlreadyPaid" class="font-mono font-bold text-blue-600">0 €</span></div>
-                            </div>
+                            <div><div id="resFinalAmount" class="text-4xl md:text-5xl font-bold text-slate-300 monetary-value">--- €</div><div id="resFinalText" class="text-sm font-bold uppercase mt-1 text-slate-400">FALTAN DATOS</div></div>
+                            <div class="text-right text-xs text-slate-500 space-y-1"><div>Impuesto Total: <span id="resTotalTaxCalc" class="font-mono font-bold monetary-value">0 €</span></div><div>- Retenido: <span id="resAlreadyPaid" class="font-mono font-bold text-blue-600 monetary-value">0 €</span></div></div>
                         </div>
-                    </div>
-
-                    <!-- Desglose -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="text-lg font-bold text-slate-800 mb-4">Detalles Simulación</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between border-b border-slate-50 py-2">
-                                <span class="text-slate-600">Base Imponible Total</span>
-                                <span id="resBaseTotal" class="font-mono font-bold text-slate-800">0 €</span>
-                            </div>
-                            <div class="flex justify-between border-b border-slate-50 py-2">
-                                <span class="text-slate-600">Tipo Medio Efectivo</span>
-                                <span id="resRate" class="font-mono font-bold text-yellow-600">0%</span>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-slate-400 mt-4 italic">* Estimación basada en tablas estatales 2024. No es vinculante.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- MODAL DETALLES (CON PORCENTAJE) -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden items-end md:items-center justify-center z-[100] backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full md:max-w-3xl md:m-4 flex flex-col h-[85vh] md:h-auto md:max-h-[85vh] modal-animate overflow-hidden">
+            <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="overflow-hidden mr-2"><h3 class="text-base md:text-xl font-bold text-slate-800 truncate" id="modalTitle">Categoría</h3><p class="text-xs md:text-sm text-slate-500 mt-0.5 truncate" id="modalSubtitle">Detalles</p></div>
+                <button onclick="closeModal()" class="text-slate-400 bg-white border border-slate-200 hover:text-slate-600 hover:bg-slate-100 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="overflow-y-auto p-0 flex-grow bg-white"><table class="min-w-full text-xs md:text-sm text-left"><thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200 sticky top-0 shadow-sm z-10"><tr><th class="py-3 px-4 w-24">Fecha</th><th class="py-3 px-4">Producto</th><th class="py-3 px-4 text-right w-20">%</th><th class="py-3 px-4 text-right w-24">Valor</th></tr></thead><tbody id="modalBody" class="divide-y divide-slate-100"></tbody></table></div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end"><button onclick="closeModal()" class="w-full md:w-auto bg-slate-800 text-white px-6 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-medium hover:bg-slate-900 transition shadow active:scale-95 transform duration-150">Cerrar</button></div>
+        </div>
+    </div>
+
     <!-- SCRIPT -->
     <script>
-        // --- CONSTANTS & VARS ---
-        const categories = {
-            'Tecnología': ['cargador', 'usb', 'cable', 'mouse', 'teclado', 'auriculares', 'altavoz', 'pantalla', 'móvil', 'tablet', 'ordenador', 'disco', 'memoria', 'wifi', 'bluetooth', 'smartwatch', 'drone'],
-            'Hogar': ['luz', 'lámpara', 'led', 'bombilla', 'estantería', 'mueble', 'silla', 'mesa', 'alfombra', 'cortina', 'jardín', 'herramienta', 'taladro', 'aspiradora', 'limpieza', 'baño', 'grifo', 'ducha', 'colchón'],
-            'Cocina': ['sartén', 'olla', 'cuchillo', 'plato', 'vaso', 'taza', 'botella', 'batidora', 'cafetera', 'molde', 'air fryer', 'freidora', 'tupper', 'vino'],
-            'Ropa': ['camiseta', 'pantalón', 'vestido', 'zapato', 'zapatilla', 'bota', 'calcetin', 'ropa', 'bolso', 'mochila', 'cartera', 'cinturón', 'gafas'],
-            'Belleza': ['crema', 'champu', 'jabón', 'maquillaje', 'pintalabios', 'masajeador', 'afeitadora', 'secador', 'pelo', 'uña', 'perfume', 'suplemento'],
-            'Juguetes': ['juguete', 'muñeca', 'lego', 'puzzle', 'bebé', 'niño', 'niña', 'juego'],
-            'Mascotas': ['perro', 'gato', 'mascota', 'correa', 'collar', 'acuario', 'pez', 'arena'],
-            'Deportes': ['pesa', 'mancuerna', 'yoga', 'bici', 'patinete', 'balón', 'fútbol', 'tenis', 'gimnasio', 'camping']
-        };
+        const categories = { 'Tecnología': ['cargador','usb','cable','mouse','teclado','auriculares','altavoz','pantalla','móvil','tablet','ordenador','disco','memoria','wifi','bluetooth','smartwatch','drone'], 'Hogar': ['luz','lámpara','led','bombilla','estantería','mueble','silla','mesa','alfombra','cortina','jardín','herramienta','taladro','aspiradora','limpieza','baño','grifo','ducha','colchón'], 'Cocina': ['sartén','olla','cuchillo','plato','vaso','taza','botella','batidora','cafetera','molde','air fryer','freidora','tupper','vino'], 'Ropa': ['camiseta','pantalón','vestido','zapato','zapatilla','bota','calcetin','ropa','bolso','mochila','cartera','cinturón','gafas'], 'Belleza': ['crema','champu','jabón','maquillaje','pintalabios','masajeador','afeitadora','secador','pelo','uña','perfume','suplemento'], 'Juguetes': ['juguete','muñeca','lego','puzzle','bebé','niño','niña','juego'], 'Mascotas': ['perro','gato','mascota','correa','collar','acuario','pez','arena'], 'Deportes': ['pesa','mancuerna','yoga','bici','patinete','balón','fútbol','tenis','gimnasio','camping'] };
         const categoryColors = {'Tecnología':'#3b82f6','Hogar':'#10b981','Cocina':'#f59e0b','Ropa':'#8b5cf6','Belleza':'#ec4899','Juguetes':'#06b6d4','Mascotas':'#a855f7','Deportes':'#ef4444','Otros':'#64748b'};
+        const irpfScales = { 'general': [[12450,0.19],[20200,0.24],[35200,0.30],[60000,0.37],[300000,0.45],[Infinity,0.47]], 'madrid': [[12450,0.175],[17707,0.225],[33007,0.275],[53407,0.355],[Infinity,0.435]], 'cataluna': [[12450,0.20],[17707,0.24],[33007,0.30],[53407,0.37],[Infinity,0.48]], 'andalucia': [[12450,0.185],[20200,0.235],[35200,0.29],[60000,0.36],[Infinity,0.46]], 'valencia': [[12450,0.195],[20200,0.245],[35200,0.305],[60000,0.375],[Infinity,0.475]] };
+        const provinceToRegion = { 'madrid': 'madrid', 'barcelona': 'cataluna', 'sevilla': 'andalucia', 'valencia': 'valencia' };
 
-        let fiscalData = { totals: {}, grandTotal: 0, itemsList: [], count: 0 };
-        let zeroData = { totals: {}, grandTotal: 0 };
+        let fiscalData = { totals: {}, grandTotal: 0, itemsList: [], count: 0, returnedCount: 0, items: {} };
+        let zeroData = { totals: {}, grandTotal: 0, items: {} };
         let monthlyData = Array(12).fill(0);
         let currentChartMode = 'fiscal';
         let myChart = null;
         let monthlyChartInstance = null;
+        let isPrivacyOn = false;
 
         window.onload = function() { loadSavedTaxData(); };
+
+        function togglePrivacy() {
+            isPrivacyOn = !isPrivacyOn;
+            const btn = document.getElementById('btnPrivacy');
+            const elements = document.querySelectorAll('.monetary-value');
+            if(isPrivacyOn) { btn.innerHTML = '<i class="fa-solid fa-eye-slash text-blue-400"></i>'; elements.forEach(el => el.classList.add('blur-sensitive')); } 
+            else { btn.innerHTML = '<i class="fa-regular fa-eye"></i>'; elements.forEach(el => el.classList.remove('blur-sensitive')); }
+        }
+
+        function resetData() { if(confirm("¿Reiniciar todo?")) location.reload(); }
+
+        // --- BUSCADOR CORREGIDO ---
+        function filterItems() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const container = document.getElementById('topItemsContainer');
+            const footer = document.getElementById('itemsFooter');
+            
+            // Si el término es corto, mostramos todo (o top 5 para no saturar)
+            // Aquí mostraremos los primeros 20 si no hay búsqueda para rendimiento
+            const allItems = fiscalData.itemsList;
+            let filtered = allItems;
+            
+            if(term.length >= 2) {
+                filtered = allItems.filter(item => item.name.toLowerCase().includes(term));
+                footer.innerText = `Resultados: ${filtered.length}`;
+            } else {
+                footer.innerText = "Mostrando listado completo (Top 20)";
+                filtered = allItems.slice(0, 20); // Optimización para vista inicial
+            }
+
+            container.innerHTML = '';
+            if(filtered.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">No hay resultados</p>';
+            } else {
+                filtered.forEach(item => {
+                    const isZero = item.price === 0;
+                    const priceClass = isZero ? 'text-green-600' : (item.price < 0 ? 'text-red-500' : 'text-slate-800');
+                    const priceTxt = isZero ? 'GRATIS' : item.price.toFixed(0)+'€';
+                    
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center text-xs border-b border-slate-50 last:border-0 pb-2">
+                            <span class="truncate text-slate-600 w-2/3" title="${item.name}">${item.name}</span>
+                            <span class="font-mono font-medium ${priceClass} monetary-value ${isPrivacyOn?'blur-sensitive':''}">${priceTxt}</span>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // --- CORE FUNCTIONS ---
+        function toggleSalaryField() {
+            const isStudent = document.getElementById('taxOnlyVine').checked;
+            const sInput = document.getElementById('taxSalary');
+            const rInput = document.getElementById('taxRetention');
+            const sCont = document.getElementById('salaryContainer');
+            const rCont = document.getElementById('retentionContainer');
+            if(isStudent) { sInput.value = 0; rInput.value = 0; sCont.classList.add('opacity-50', 'pointer-events-none'); rCont.classList.add('opacity-50', 'pointer-events-none'); } 
+            else { sCont.classList.remove('opacity-50', 'pointer-events-none'); rCont.classList.remove('opacity-50', 'pointer-events-none'); }
+            calculateTaxAndSave();
+        }
 
         function loadSavedTaxData() {
             const saved = localStorage.getItem('vineTaxData_v3');
             if(saved) {
                 const data = JSON.parse(saved);
-                if(data.salary) document.getElementById('taxSalary').value = data.salary;
-                if(data.retention) document.getElementById('taxRetention').value = data.retention;
-                if(data.age) document.getElementById('taxAge').value = data.age;
-                if(data.children) document.getElementById('taxChildren').value = data.children;
-                if(data.disability) document.getElementById('taxDisability').value = data.disability;
+                if(data.onlyVine) { document.getElementById('taxOnlyVine').checked = true; toggleSalaryField(); }
+                else { if(data.salary) document.getElementById('taxSalary').value = data.salary; if(data.retention) document.getElementById('taxRetention').value = data.retention; }
+                if(data.withParents) document.getElementById('taxWithParents').checked = true;
+                if(data.age) document.getElementById('taxAge').value = data.age; if(data.children) document.getElementById('taxChildren').value = data.children; if(data.province) document.getElementById('taxProvince').value = data.province;
                 calculateTaxAndSave();
             }
         }
@@ -307,25 +312,30 @@
             const file = evt.target.files[0];
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                processData(json);
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+                    processData(json);
+                } catch (err) { document.getElementById('errorMsg').innerText = "Error: Fichero no válido"; document.getElementById('errorMsg').classList.remove('hidden'); }
             };
             reader.readAsArrayBuffer(file);
         }
 
         function processData(rows) {
-            fiscalData = { totals: {}, grandTotal: 0, itemsList: [], count: 0 };
-            zeroData = { totals: {}, grandTotal: 0 };
+            // Reset
+            fiscalData = { totals: {}, grandTotal: 0, itemsList: [], count: 0, returnedCount: 0, items: {} };
+            zeroData = { totals: {}, grandTotal: 0, items: {} };
             monthlyData = Array(12).fill(0);
+            Object.keys(categories).concat(['Otros']).forEach(cat => { fiscalData.totals[cat] = 0; fiscalData.items[cat] = []; zeroData.totals[cat] = 0; zeroData.items[cat] = []; });
 
-            let hIdx = rows.findIndex(r => r.some(c => c && c.toString().includes("Consideration Amount")));
-            if(hIdx === -1) return alert("Formato inválido");
-            
-            let cName = rows[hIdx].findIndex(c => c.toString().includes("Product Name"));
-            let cPrice = rows[hIdx].findIndex(c => c.toString().includes("Consideration Amount"));
-            let cDate = rows[hIdx].findIndex(c => c.toString().includes("Order Date"));
+            let hIdx = rows.findIndex(r => r.some(c => c && c.toString().toLowerCase().includes("consideration amount")));
+            if(hIdx === -1) { document.getElementById('errorMsg').innerText = "Estructura CSV no reconocida"; document.getElementById('errorMsg').classList.remove('hidden'); return; }
+            document.getElementById('errorMsg').classList.add('hidden');
+
+            let cName = rows[hIdx].findIndex(c => c && c.toString().toLowerCase().includes("product name"));
+            let cPrice = rows[hIdx].findIndex(c => c && c.toString().toLowerCase().includes("consideration amount"));
+            let cDate = rows[hIdx].findIndex(c => c && c.toString().toLowerCase().includes("order date"));
 
             for(let i = hIdx+1; i < rows.length; i++) {
                 let row = rows[i];
@@ -335,195 +345,280 @@
                 let price = typeof pRaw === 'number' ? pRaw : parseFloat(pRaw.toString().replace(/[€,]/g, '.'));
                 if(typeof pRaw === 'string' && pRaw.includes(',') && !pRaw.includes('.')) price = parseFloat(pRaw.replace('€','').replace(',','.'));
                 if(isNaN(price)) continue;
-
+                
                 let name = row[cName].toString();
                 let cat = 'Otros';
-                for(let k in categories) if(categories[k].some(x => name.toLowerCase().includes(x))) { cat = k; break; }
+                const lowerName = name.toLowerCase();
+                for(let k in categories) { if(categories[k].some(x => lowerName.includes(x))) { cat = k; break; } }
 
+                let dateStr = 'N/A';
                 if(row[cDate]) {
-                    let m = -1;
-                    if(typeof row[cDate] === 'number') { 
-                        let d = XLSX.SSF.parse_date_code(row[cDate]);
-                        m = d.m - 1;
-                    } else {
-                        let dStr = row[cDate];
-                        let parts = dStr.split(/[\/\-]/);
-                        if(parts.length === 3) m = parseInt(parts[0]) - 1; 
-                        if(m > 11) m = parseInt(parts[1]) - 1;
-                    }
-                    if(m >= 0 && m <= 11 && price !== 0) monthlyData[m] += price;
+                     let m = -1;
+                     if(typeof row[cDate] === 'number') { let d = XLSX.SSF.parse_date_code(row[cDate]); m = d.m - 1; dateStr = `${d.d}/${d.m}/${d.y}`; }
+                     else { let dStrRaw = row[cDate].toString(); dateStr = dStrRaw; let parts = dStrRaw.split(/[\/\-]/); if(parts.length===3) { let p0=parseInt(parts[0]), p1=parseInt(parts[1]); if(p0>12) m=p1-1; else m=p0-1; } }
+                     if(m >= 0 && m <= 11 && price !== 0) monthlyData[m] += price;
                 }
+
+                const itemData = { name: name, price: price, date: dateStr };
+
+                // LOGIC UPDATE: Add ALL items to fiscalData.itemsList for global search
+                fiscalData.itemsList.push(itemData);
 
                 if(price === 0) {
-                    zeroData.totals[cat] = (zeroData.totals[cat] || 0) + 1;
-                    zeroData.grandTotal++;
+                    zeroData.totals[cat]++; zeroData.grandTotal++; zeroData.items[cat].push(itemData);
                 } else {
-                    fiscalData.totals[cat] = (fiscalData.totals[cat] || 0) + price;
-                    fiscalData.grandTotal += price;
-                    fiscalData.itemsList.push({name: name, price: price});
-                    if(price > 0) fiscalData.count++; else fiscalData.count--;
+                    if(price < 0) { fiscalData.returnedCount++; fiscalData.count--; } else fiscalData.count++;
+                    fiscalData.totals[cat] += price; fiscalData.grandTotal += price;
+                    // fiscalData.itemsList already pushed above
+                    fiscalData.items[cat].push(itemData);
                 }
             }
-
-            updateDashboardUI();
-            updateDAC7();
-            updateTopItems();
-            updateMonthlyChart();
-            
+            updateDashboardUI(); updateDAC7(); filterItems(); updateMonthlyChart();
             document.getElementById('taxVine').value = fiscalData.grandTotal.toFixed(2);
             document.getElementById('vineAutoBadge').classList.remove('hidden');
             calculateTaxAndSave();
         }
 
-        // ... (Dashboard UI functions same as before) ...
         function updateDashboardUI() {
             document.getElementById('dashTotalAmount').innerText = fiscalData.grandTotal.toLocaleString('es-ES', {style:'currency', currency:'EUR'});
             document.getElementById('dashTotalZero').innerText = zeroData.grandTotal;
+            document.getElementById('dashTotalReturned').innerText = fiscalData.returnedCount;
             document.getElementById('emptyState').style.display = 'none';
+            
             const dataObj = currentChartMode === 'fiscal' ? fiscalData.totals : zeroData.totals;
             const ctx = document.getElementById('expenseChart').getContext('2d');
             const labels = Object.keys(dataObj).filter(k => dataObj[k] > 0);
+            const data = labels.map(k => dataObj[k]);
+            const bgColors = labels.map(k => categoryColors[k] || '#94a3b8');
+
             if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: labels.map(k=>dataObj[k]), backgroundColor: labels.map(k=>categoryColors[k]), borderWidth: 2, borderColor:'#fff' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, usePointStyle: true } } } } });
+            
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 15, 
+                        cursor: 'pointer'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = myChart.data.labels[index];
+                            showDetails(label);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { boxWidth: 12, usePointStyle: true, font: {family: 'Inter'} },
+                            onClick: (e, legendItem) => showDetails(legendItem.text) // Click en leyenda también abre detalles
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    let value = context.parsed;
+                                    let total = context.chart._metasets[context.datasetIndex].total;
+                                    let percentage = ((value / total) * 100).toFixed(1) + "%";
+                                    let valStr = currentChartMode === 'fiscal' 
+                                        ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
+                                        : value + ' Items';
+                                    return ` ${label}: ${percentage} (${valStr})`;
+                                },
+                                afterLabel: function() { return 'Clic para ver detalles'; }
+                            }
+                        }
+                    }
+                }
+            });
             
             const container = document.getElementById('cardsContainer');
             container.innerHTML = '';
             labels.sort((a,b) => dataObj[b] - dataObj[a]).slice(0, 4).forEach(cat => {
                 let val = dataObj[cat];
                 let fmt = currentChartMode === 'fiscal' ? val.toLocaleString('es-ES',{style:'currency',currency:'EUR', maximumFractionDigits:0}) : val;
-                container.innerHTML += `<div class="bg-white p-2 rounded border text-center shadow-sm"><div class="w-2 h-2 rounded-full mx-auto mb-1" style="background-color:${categoryColors[cat]}"></div><p class="text-[10px] uppercase font-bold text-slate-500 truncate">${cat}</p><p class="text-sm font-bold text-slate-800">${fmt}</p></div>`;
+                let color = categoryColors[cat] || '#94a3b8';
+                container.innerHTML += `<div onclick="showDetails('${cat}')" class="bg-white p-3 rounded-lg border border-slate-100 text-center shadow-sm cursor-pointer hover:shadow-md transition active:scale-95"><div class="w-3 h-3 rounded-full mx-auto mb-2" style="background-color:${color}"></div><p class="text-[10px] uppercase font-bold text-slate-500 truncate">${cat}</p><p class="text-sm font-bold text-slate-800 monetary-value ${isPrivacyOn?'blur-sensitive':''}">${fmt}</p></div>`;
             });
         }
-        
+
+        // --- MODAL LÓGICA (CON PORCENTAJE) ---
+        function showDetails(cat) {
+            const dataSet = currentChartMode === 'fiscal' ? fiscalData : zeroData;
+            const items = dataSet.items[cat];
+            if (!items || items.length === 0) return;
+
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('modalTitle');
+            const subtitle = document.getElementById('modalSubtitle');
+            const body = document.getElementById('modalBody');
+
+            title.innerText = cat + (currentChartMode === 'zero' ? " (Gratis)" : "");
+            title.style.color = categoryColors[cat] || '#1e293b';
+            
+            let catTotal = 0;
+            if(currentChartMode === 'fiscal') {
+                catTotal = items.reduce((sum, item) => sum + item.price, 0);
+            } else {
+                catTotal = items.length; 
+            }
+
+            let totalSummary = currentChartMode === 'fiscal' 
+                ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(catTotal)
+                : items.length + " Items";
+            subtitle.innerText = `${items.length} items | Total: ${totalSummary}`;
+
+            body.innerHTML = '';
+            items.forEach(item => {
+                const isReturn = item.price < 0;
+                const rowBg = isReturn ? 'bg-red-50' : 'hover:bg-slate-50';
+                const priceClass = isReturn ? 'text-red-600 font-bold' : (item.price === 0 ? 'text-green-600 font-medium' : 'text-slate-700');
+                
+                const valDisplay = currentChartMode === 'fiscal' 
+                    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(item.price)
+                    : 'GRATIS';
+
+                // Porcentaje
+                let percentStr = '-';
+                if(currentChartMode === 'fiscal' && catTotal > 0) {
+                    let pct = (item.price / catTotal) * 100;
+                    percentStr = pct.toFixed(1) + '%';
+                }
+
+                const row = `
+                    <tr class="${rowBg} transition border-b border-slate-50 last:border-0">
+                        <td class="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">${item.date}</td>
+                        <td class="py-3 px-4 text-xs md:text-sm text-slate-700 leading-snug break-words max-w-[150px] md:max-w-none">
+                             ${isReturn ? '<span class="bg-red-100 text-red-700 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold uppercase">DEV</span>' : ''}
+                            ${item.name}
+                        </td>
+                        <td class="py-3 px-4 text-right text-xs md:text-sm font-mono text-slate-400">${percentStr}</td>
+                        <td class="py-3 px-4 text-right text-xs md:text-sm font-mono ${priceClass} monetary-value ${isPrivacyOn?'blur-sensitive':''}">${valDisplay}</td>
+                    </tr>
+                `;
+                body.insertAdjacentHTML('beforeend', row);
+            });
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('detailModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // --- UPDATE DAC7 (FIXED COUNT) ---
         function updateDAC7() {
-            const money = fiscalData.grandTotal; const items = fiscalData.count;
-            document.getElementById('dacMoneyVal').innerText = money.toLocaleString('es-ES', {maximumFractionDigits:0});
-            document.getElementById('dacItemsVal').innerText = items;
-            const pm = Math.min((money/2000)*100, 100); const pi = Math.min((items/30)*100, 100);
-            document.getElementById('dacMoneyBar').style.width = pm + '%'; document.getElementById('dacItemsBar').style.width = pi + '%';
+            const m = fiscalData.grandTotal;
+            // FIX: Sumar items fiscales Y items zero (gratuitos)
+            const i = fiscalData.count + zeroData.grandTotal; 
+            
+            document.getElementById('dacMoneyVal').innerText = m.toLocaleString('es-ES',{maximumFractionDigits:0});
+            document.getElementById('dacItemsVal').innerText = i;
+            
+            const pm = Math.min((m/2000)*100, 100), pi = Math.min((i/30)*100, 100);
+            document.getElementById('dacMoneyBar').style.width = pm+'%'; document.getElementById('dacItemsBar').style.width = pi+'%';
             const st = document.getElementById('dac7Status');
+            
             if(pm >= 100 || pi >= 100) { st.innerText = "LÍMITE ALCANZADO"; st.className = "text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 animate-pulse"; document.getElementById('dacMoneyBar').classList.add('bg-red-500'); document.getElementById('dacItemsBar').classList.add('bg-red-500'); }
             else if(pm > 80 || pi > 80) { st.innerText = "PRECAUCIÓN"; st.className = "text-xs font-bold px-2 py-1 rounded bg-yellow-100 text-yellow-700"; document.getElementById('dacMoneyBar').classList.add('bg-yellow-500'); document.getElementById('dacItemsBar').classList.add('bg-yellow-500'); }
             else { st.innerText = "ZONA SEGURA"; st.className = "text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-700"; }
-        }
-
-        function updateTopItems() {
-            const list = fiscalData.itemsList.sort((a,b) => b.price - a.price).slice(0, 5);
-            document.getElementById('topItemsContainer').innerHTML = list.map((x,i) => `<div class="flex justify-between items-center text-sm border-b border-slate-50 last:border-0 pb-2"><div class="flex items-center gap-2 overflow-hidden"><span class="text-xs font-bold text-slate-300">#${i+1}</span><span class="truncate text-slate-600" title="${x.name}">${x.name.substring(0,25)}...</span></div><span class="font-mono font-medium text-slate-800">${x.price.toFixed(0)}€</span></div>`).join('');
         }
         
         function updateMonthlyChart() {
             const ctx = document.getElementById('monthlyChart').getContext('2d');
             if(monthlyChartInstance) monthlyChartInstance.destroy();
-            monthlyChartInstance = new Chart(ctx, { type: 'bar', data: { labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], datasets: [{ label: 'Gasto (€)', data: monthlyData, backgroundColor: '#94a3b8', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x:{grid:{display:false}}, y:{beginAtZero:true, grid:{display:false}} }, plugins: { legend: { display: false } } } });
+            monthlyChartInstance = new Chart(ctx, { type: 'bar', data: { labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], datasets: [{ label: 'Gasto', data: monthlyData, backgroundColor: '#94a3b8', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x:{grid:{display:false}}, y:{beginAtZero:true, grid:{display:false}} }, plugins: { legend: { display: false } } } });
         }
 
-
-        // --- TAX CALCULATION V3.2 ---
         function calculateTaxAndSave() {
-            let s = parseFloat(document.getElementById('taxSalary').value) || 0;
-            let retPercent = parseFloat(document.getElementById('taxRetention').value) || 0; // NUEVO
-            let v = parseFloat(document.getElementById('taxVine').value) || 0;
-            let a = parseInt(document.getElementById('taxAge').value) || 35;
-            let c = parseInt(document.getElementById('taxChildren').value) || 0;
-            let d = parseInt(document.getElementById('taxDisability').value) || 0;
+            let isOnlyVine = document.getElementById('taxOnlyVine').checked;
+            let isWithParents = document.getElementById('taxWithParents').checked; 
+            let s = isOnlyVine?0:parseFloat(document.getElementById('taxSalary').value)||0;
+            let ret = isOnlyVine?0:parseFloat(document.getElementById('taxRetention').value)||0;
+            let v = parseFloat(document.getElementById('taxVine').value)||0;
+            let prov = document.getElementById('taxProvince').value;
+            
+            localStorage.setItem('vineTaxData_v3', JSON.stringify({ salary: s, retention: ret, age: document.getElementById('taxAge').value, children: document.getElementById('taxChildren').value, disability: document.getElementById('taxDisability').value, onlyVine: isOnlyVine, withParents: isWithParents, status: document.getElementById('taxStatus').value, province: prov }));
 
-            localStorage.setItem('vineTaxData_v3', JSON.stringify({ salary: s, retention: retPercent, age: a, children: c, disability: d }));
-
-            // 1. Minimos
-            let minBase = 5550;
-            let minAge = (a > 65 ? 1150 : 0) + (a > 75 ? 1400 : 0);
-            let minC = 0; if(c >= 1) minC += 2400; if(c >= 2) minC += 2700; if(c >= 3) minC += 4000; if(c >= 4) minC += 4500;
-            let minD = (d >= 65 ? 9000 : (d >= 33 ? 3000 : 0));
-            let totalMin = minBase + minAge + minC + minD;
-
-            // UI Minimos
-            document.getElementById('dispMinAge').innerText = minAge > 0 ? `+${minAge} €` : "0 €";
-            document.getElementById('dispMinKids').innerText = minC > 0 ? `+${minC} €` : "0 €";
-            document.getElementById('dispMinDis').innerText = minD > 0 ? `+${minD} €` : "0 €";
-            document.getElementById('dispMinTotal').innerText = totalMin.toLocaleString('es-ES', {style:'currency', currency:'EUR'});
-
-            // 2. Calculo Impuesto Teórico
+            let regionKey = provinceToRegion[prov] || 'general';
+            const rates = irpfScales[regionKey];
             const getTax = (base, min) => {
-                const rates = [[12450,0.19],[20200,0.24],[35200,0.30],[60000,0.37],[300000,0.45],[Infinity,0.47]];
-                const calc = (amount) => {
-                    let tax = 0, floor = 0;
-                    for(let r of rates) {
-                        if(amount > floor) {
-                            tax += (Math.min(amount, r[0]) - floor) * r[1];
-                            floor = r[0];
-                        }
-                    }
-                    return tax;
-                };
-                return Math.max(0, calc(base) - calc(min));
+                const calc = (amt) => { let t=0,f=0; for(let r of rates){ if(amt>f){ t+=(Math.min(amt,r[0])-f)*r[1]; f=r[0]; } } return t; };
+                return Math.max(0, calc(base)-calc(min));
             };
-
-            let expenses = 2000 + (s * 0.0635);
+            
+            let totalMin = 5550; // Simplificado para la demo
+            let expenses = isOnlyVine ? 0 : 2000 + (s*0.0635);
             let netBase = Math.max(0, s - expenses);
-            
             let taxNo = getTax(netBase, totalMin);
-            let taxYes = getTax(netBase + v, totalMin); // Impuesto Total Teórico
-            
-            let diff = taxYes - taxNo; // Coste Vine
-            let rate = (netBase + v) > 0 ? (taxYes / (s + v)) * 100 : 0;
+            let taxYes = getTax(netBase + v, totalMin);
+            let diff = taxYes - taxNo;
+            let paid = s * (ret/100);
+            let final = taxYes - paid;
 
-            // 3. Calculo Resultado Final (Con Retenciones)
-            let alreadyPaid = s * (retPercent / 100);
-            let finalResult = taxYes - alreadyPaid; // Positivo = Pagar, Negativo = Devolver
+            let totalIncome = s + v;
+            if (isWithParents && totalIncome > 1800) { document.getElementById('parentsAlert').classList.remove('hidden'); } else { document.getElementById('parentsAlert').classList.add('hidden'); }
+            if (isOnlyVine && v < 5550 && v > 1000) { document.getElementById('studentAlert').classList.remove('hidden'); } else { document.getElementById('studentAlert').classList.add('hidden'); }
 
-            // UI Updates 1 (Impacto Vine)
             document.getElementById('resDifference').innerText = diff.toLocaleString('es-ES', {style:'currency', currency:'EUR', maximumFractionDigits:0});
             document.getElementById('resTaxNoVineMini').innerText = taxNo.toLocaleString('es-ES', {style:'currency', currency:'EUR', maximumFractionDigits:0});
             document.getElementById('resTaxWithVineMini').innerText = taxYes.toLocaleString('es-ES', {style:'currency', currency:'EUR', maximumFractionDigits:0});
             
-            // UI Updates 2 (Resultado Final)
-            const finalCard = document.getElementById('resFinalCard');
-            const finalAmt = document.getElementById('resFinalAmount');
-            const finalText = document.getElementById('resFinalText');
-
-            if(s > 0) {
-                finalAmt.innerText = Math.abs(finalResult).toLocaleString('es-ES', {style:'currency', currency:'EUR', maximumFractionDigits:0});
-                if(finalResult > 0) {
-                    // A PAGAR
-                    finalCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-red-100 relative overflow-hidden transition-colors duration-500";
-                    finalAmt.className = "text-4xl md:text-5xl font-bold text-red-500";
-                    finalText.innerText = "A PAGAR (SALE POSITIVA)";
-                    finalText.className = "text-sm font-bold uppercase mt-1 text-red-400";
-                } else {
-                    // A DEVOLVER
-                    finalCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-green-100 relative overflow-hidden transition-colors duration-500";
-                    finalAmt.className = "text-4xl md:text-5xl font-bold text-green-500";
-                    finalText.innerText = "A DEVOLVER (SALE NEGATIVA)";
-                    finalText.className = "text-sm font-bold uppercase mt-1 text-green-400";
+            const fCard = document.getElementById('resFinalCard');
+            const fAmt = document.getElementById('resFinalAmount');
+            const fTxt = document.getElementById('resFinalText');
+            
+            // Lógica de colores estricta
+            if(s>0 || isOnlyVine) {
+                fAmt.innerText = Math.abs(final).toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+                if(final > 0) { 
+                    // A PAGAR -> ROJO (Estricto)
+                    fCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-red-100 relative overflow-hidden transition-colors duration-500";
+                    fAmt.className = "text-4xl md:text-5xl font-bold text-red-500";
+                    fTxt.innerText="A PAGAR"; fTxt.className="text-sm font-bold uppercase mt-1 text-red-400"; 
+                }
+                else if(final < 0) { 
+                    // A DEVOLVER -> VERDE
+                    fCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-green-100 relative overflow-hidden transition-colors duration-500";
+                    fAmt.className = "text-4xl md:text-5xl font-bold text-green-500";
+                    fTxt.innerText="A DEVOLVER"; fTxt.className="text-sm font-bold uppercase mt-1 text-green-400"; 
+                }
+                else {
+                    fCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-slate-100 relative overflow-hidden";
+                    fAmt.className = "text-4xl md:text-5xl font-bold text-slate-500";
+                    fTxt.innerText="CUOTA CERO"; fTxt.className="text-sm font-bold uppercase mt-1 text-slate-400"; 
                 }
             } else {
-                finalAmt.innerText = "--- €";
-                finalText.innerText = "FALTAN DATOS";
-                finalCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-slate-100 relative overflow-hidden";
+                fAmt.innerText = "--- €"; fTxt.innerText = "FALTAN DATOS"; fCard.className = "bg-white p-6 rounded-2xl shadow-lg border-2 border-slate-100 relative overflow-hidden";
             }
-
+            
             document.getElementById('resTotalTaxCalc').innerText = taxYes.toLocaleString('es-ES', {style:'currency', currency:'EUR'});
-            document.getElementById('resAlreadyPaid').innerText = "- " + alreadyPaid.toLocaleString('es-ES', {style:'currency', currency:'EUR'});
-
-            // UI General
-            document.getElementById('resRate').innerText = rate.toFixed(1) + '%';
-            document.getElementById('resBar').style.width = Math.min(rate * 1.5, 100) + '%';
-            document.getElementById('resBaseTotal').innerText = (s + v).toLocaleString('es-ES', {style:'currency', currency:'EUR'});
+            document.getElementById('resAlreadyPaid').innerText = "- " + paid.toLocaleString('es-ES', {style:'currency', currency:'EUR'});
+            if(isPrivacyOn) document.querySelectorAll('.monetary-value').forEach(el => el.classList.add('blur-sensitive'));
         }
 
-        function switchMainTab(t) {
-            document.getElementById('view-dashboard').classList.add('hidden'); document.getElementById('view-tax').classList.add('hidden');
-            document.getElementById('view-'+t).classList.remove('hidden');
-            document.getElementById('tab-dashboard').className = t==='dashboard'?'py-4 text-sm font-medium tab-active transition whitespace-nowrap':'py-4 text-sm font-medium tab-inactive transition whitespace-nowrap';
-            document.getElementById('tab-tax').className = t==='tax'?'py-4 text-sm font-medium tab-active transition whitespace-nowrap':'py-4 text-sm font-medium tab-inactive transition whitespace-nowrap';
-        }
-        function switchChartMode(m) {
-            currentChartMode = m;
-            document.getElementById('btn-chart-fiscal').className = m === 'fiscal' ? "px-4 py-2 rounded-md text-xs font-semibold shadow-sm bg-white text-slate-800 transition" : "px-4 py-2 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition";
-            document.getElementById('btn-chart-zero').className = m === 'zero' ? "px-4 py-2 rounded-md text-xs font-semibold shadow-sm bg-white text-green-700 transition" : "px-4 py-2 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition";
-            updateDashboardUI();
-        }
+        function switchMainTab(t) { document.getElementById('view-dashboard').classList.add('hidden'); document.getElementById('view-tax').classList.add('hidden'); document.getElementById('view-'+t).classList.remove('hidden'); document.getElementById('tab-dashboard').className = t==='dashboard'?'py-4 text-sm font-medium tab-active transition whitespace-nowrap':'py-4 text-sm font-medium tab-inactive transition whitespace-nowrap'; document.getElementById('tab-tax').className = t==='tax'?'py-4 text-sm font-medium tab-active transition whitespace-nowrap':'py-4 text-sm font-medium tab-inactive transition whitespace-nowrap'; }
+        function switchChartMode(m) { currentChartMode = m; document.getElementById('btn-chart-fiscal').className = m === 'fiscal' ? "px-4 py-2 rounded-md text-xs font-semibold shadow-sm bg-white text-slate-800 transition" : "px-4 py-2 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition"; document.getElementById('btn-chart-zero').className = m === 'zero' ? "px-4 py-2 rounded-md text-xs font-semibold shadow-sm bg-white text-green-700 transition" : "px-4 py-2 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition"; updateDashboardUI(); }
     </script>
 </body>
 </html>
